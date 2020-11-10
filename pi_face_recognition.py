@@ -137,7 +137,8 @@ class App:
                 self.imagen=PhotoImage(file=archivo)
                 self.label.configure(image=self.imagen,text="\n\n\n\n\n\n\n\n\n\n\n"+hora,fg="white",font=self.font)
                 self.label.image=self.imagen
-                self.window.after(4000,self.update)
+                tiempo = 8000 if res == "No registrado" else 4000 
+                self.window.after(tiempo,self.update)
             else:
                 txt = "\n\n\n\n\n\n\n\n\n\n\n"+hora
                 self.imagen=PhotoImage(file="logo-sit-blanco.png")
@@ -150,6 +151,7 @@ class App:
 
 def voz(nombre):
     engine = pyttsx3.init()
+    #tiempoINI=time.time()
     # Se genera la voz a partir de un texto
     engine.setProperty('rate',140)
     # print(texto)
@@ -158,10 +160,11 @@ def voz(nombre):
         texto="No estas registrado dentro de la base de datos, porfavor contáctate con alguien del equipo de sit"
     else:
         texto = "Bienvenido a sit electronics "+nombre
-        
+    
     engine.say(texto)
     # Se reproduce la voz
     engine.runAndWait()
+    #print(time.time()-tiempoINI)
 
 
 def main():

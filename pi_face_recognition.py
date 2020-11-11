@@ -14,9 +14,10 @@ import pickle
 import time
 import cv2
 import pyttsx3
+import pygame
 from queue import Full, Queue, Empty
 from threading import Thread, Event
-
+from usb_barcode_scanner import barcode_reader
 
 
 def cargarModelo():
@@ -42,6 +43,8 @@ def cargarModelo():
 
 def detectar(detector,data,vs,resultado_queue: Queue,resultado_event:Event,stop_event:Event):
     # loop over frames from the video file stream
+    pygame.init()
+   
     contador_fps = 0
     contador_detecciones = 0
     while not stop_event.is_set():
@@ -98,14 +101,82 @@ def detectar(detector,data,vs,resultado_queue: Queue,resultado_event:Event,stop_
                 name = max(counts, key=counts.get)
             # update the list of names
             if contador_detecciones > 3:
-                resultado_event.set()
-                resultado_queue.put_nowait(name)
-                voz(name)
+                print(name)
+                if name == "No registrado":
+                    resultado_event.set()
+                    resultado_queue.put_nowait(name)    
+                    voz("0",name)
+                    time.sleep(5)
+                else:
+                    voz("1",name)
+                    pedir_codigo(name)
+                    
                 contador_detecciones = 0 
                 resultado_event.clear()
             names.append(name)
 
-
+def voz(code,name):
+    #code = 0, no registrado
+    #code = -1, qr no coincide
+    #code = 1, pide QR
+    #code = 2, qr coincide
+    name=name.split("-")[0]
+    atchivo = "Bienvenido "+name+".ogg"
+        
+    #engine = pyttsx3.init()
+    if code == "0":
+        pygame.mixer.Sound('No se encuentra registrado en nuestra base de datos.ogg').play()
+    elif code == "-1":
+        #pygame.mixer.Sound('').play()
+        pygame.mixer.Sound('Los datos no coinciden.ogg').play()
+    elif code== "1":
+        pygame.mixer.Sound('Porfavor, acerque su cedula de identidad al lector.ogg').play()
+    else:
+        pygame.mixer.Sound(archivo).play()
+        """
+        if name=="Nacho":
+            pygame.mixer.Sound('Bienvenido ignacio.ogg').play()
+        elif name =="Pablo":
+            pygame.mixer.Sound('Bienvenido pablo.ogg').play()
+        elif name =="Vicho":
+            pygame.mixer.Sound('Bienvenido vicente.ogg').play()
+        elif name =="Antonio":
+            pygame.mixer.Sound('Bienvenido antonio.ogg').play()
+         """        
+    
+def pedir_codigo(name):    
+    nombre,codigo_real = name.split('-')
+    codigo_scanner = scanner()
+    timeFin = time.time() +5
+    while(time.time() < timeFin):
+        linea = barcode_reader()
+    
+def seccionar_rut (linea):
+    linea.replace("]","|")
+    linea.replace("'","-")
+    if (linea[0:4] == "https"):
+        #leyó carné nuevo
+        linea = linea.split("RUN")[1].split("/")[0].split("-")[0][1:]
+        return linea
+    elif (len(linea) == 8):
+        #leyó algo de 8 digitos, veamos si es el del nacho
+        if linea == "16832974":
+            return linea
+        else:
+            return "error"
+    else:
+        return "error"  
+    
+def scanner():
+    try:
+        while(True):
+            
+    
+    except KeyboardInterrupt:
+        print("keyboard interrpt")
+        #logging.debug('Keyboard interrupt')
+    except Exception as err:
+        print("error",err)
 
 class App:
     def __init__(self, window, resultado_queue:Queue, resultado_event: Event):
@@ -137,7 +208,7 @@ class App:
                 self.imagen=PhotoImage(file=archivo)
                 self.label.configure(image=self.imagen,text="\n\n\n\n\n\n\n\n\n\n\n"+hora,fg="white",font=self.font)
                 self.label.image=self.imagen
-                tiempo = 8000 if res == "No registrado" else 4000 
+                tiempo = 8000 if res == "No registrado" else 4500 
                 self.window.after(tiempo,self.update)
             else:
                 txt = "\n\n\n\n\n\n\n\n\n\n\n"+hora
@@ -149,22 +220,7 @@ class App:
         except Empty:
             pass
 
-def voz(nombre):
-    engine = pyttsx3.init()
-    #tiempoINI=time.time()
-    # Se genera la voz a partir de un texto
-    engine.setProperty('rate',140)
-    # print(texto)
-    texto=""
-    if nombre == "No registrado":
-        texto="No estas registrado dentro de la base de datos, porfavor contáctate con alguien del equipo de sit"
-    else:
-        texto = "Bienvenido a sit electronics "+nombre
-    
-    engine.say(texto)
-    # Se reproduce la voz
-    engine.runAndWait()
-    #print(time.time()-tiempoINI)
+
 
 
 def main():
@@ -173,6 +229,7 @@ def main():
     resultado_queue = Queue()
     resultado_event= Event()
     stop_event= Event()
+    
 #    App(tkinter.Tk(), resultado_queue,pausa_event,cargando_event)
 
 

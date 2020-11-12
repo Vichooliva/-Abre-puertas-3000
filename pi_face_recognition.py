@@ -149,10 +149,14 @@ def voz(code,name):
     elif code == "-1":
         #pygame.mixer.Sound('').play()
         pygame.mixer.Sound('Los datos no coinciden.ogg').play()
-    elif code== "1":
-        pygame.mixer.Sound('Porfavor, acerque su cedula de identidad al lector.ogg').play()
+    elif code== "1" and name=="Nacho":
+        pygame.mixer.Sound('Bienvenido ignacio.ogg').play()
+    elif code== "1" and name=="Pablo":
+        pygame.mixer.Sound('Bienvenido pablo.ogg').play()
+    elif code== "1" and name=="Vicho":
+        pygame.mixer.Sound('Bienvenido vicente.ogg').play()
     else:
-        pygame.mixer.Sound(archivo).play()
+        pygame.mixer.Sound('Bienvenido antonio.ogg').play()
         """
         if name=="Nacho":
             pygame.mixer.Sound('Bienvenido ignacio.ogg').play()
@@ -187,16 +191,16 @@ def seccionar_rut (linea):
     else:
         return "error"  
     
-def scanner():
-    try:
-        while(True):
+#def scanner():
+#    try:
+#        while(True):
             
     
-    except KeyboardInterrupt:
-        print("keyboard interrpt")
-        #logging.debug('Keyboard interrupt')
-    except Exception as err:
-        print("error",err)
+#    except KeyboardInterrupt:
+#        print("keyboard interrpt")
+#        #logging.debug('Keyboard interrupt')
+#    except Exception as err:
+#        print("error",err)
 
 class App:
     def __init__(self, window, resultado_queue:Queue, resultado_event: Event):

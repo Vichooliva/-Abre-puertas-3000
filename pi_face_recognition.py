@@ -15,10 +15,30 @@ import time
 import cv2
 import pyttsx3
 import pygame
+import RPi.GPIO as GPIO
 from queue import Full, Queue, Empty
 from threading import Thread, Event
 from usb_barcode_scanner import barcode_reader
 
+Pistola = 18
+Puerta = 31
+
+#Se declaran los GPIO como salida, ya que,se les entrega energía
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(led, GPIO.OUT)
+GPIO.setup(switch, GPIO.OUT)
+
+def abrirpuerta():
+    GPIO.output(Puerta, GPIO.HIGH)
+    time.sleep(0.2)
+    GPIO.output(pistola, GPIO.LOW)
+    time.sleep(0.2)
+
+def activarpistola():
+    GPIO.output(pistola, GPIO.HIGH)
+    time.sleep(0.2)
+    GPIO.output(pistola, GPIO.LOW)
+    time.sleep(0.2)
 
 def cargarModelo():
     ap = argparse.ArgumentParser()

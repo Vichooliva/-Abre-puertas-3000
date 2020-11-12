@@ -25,19 +25,19 @@ Puerta = 31
 
 #Se declaran los GPIO como salida, ya que,se les entrega energía
 GPIO.setmode(GPIO.BOARD)
-GPIO.setup(led, GPIO.OUT)
-GPIO.setup(switch, GPIO.OUT)
+GPIO.setup(Puerta, GPIO.OUT)
+GPIO.setup(Pistola, GPIO.OUT)
 
 def abrirpuerta():
     GPIO.output(Puerta, GPIO.HIGH)
     time.sleep(0.2)
-    GPIO.output(pistola, GPIO.LOW)
+    GPIO.output(Puerta, GPIO.LOW)
     time.sleep(0.2)
 
 def activarpistola():
-    GPIO.output(pistola, GPIO.HIGH)
+    GPIO.output(Pistola, GPIO.HIGH)
     time.sleep(0.2)
-    GPIO.output(pistola, GPIO.LOW)
+    GPIO.output(Pistola, GPIO.LOW)
     time.sleep(0.2)
 
 def cargarModelo():

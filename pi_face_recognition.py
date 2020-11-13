@@ -18,7 +18,7 @@ import pygame
 import RPi.GPIO as GPIO
 from queue import Full, Queue, Empty
 from threading import Thread, Event
-from usb_barcode_scanner import barcode_reader
+#from usb_barcode_scanner import barcode_reader
 
 Pistola = 18
 Puerta = 31
@@ -39,6 +39,7 @@ def activarpistola():
     time.sleep(0.2)
     GPIO.output(Pistola, GPIO.LOW)
     time.sleep(0.2)
+
 
 def cargarModelo():
     ap = argparse.ArgumentParser()
@@ -61,7 +62,7 @@ def cargarModelo():
 # start the FPS counter
 #fps = FPS().start()
 
-def detectar(detector,data,vs,resultado_queue: Queue,resultado_event:Event,stop_event:Event):
+def detectar(detector,data,vs,resultado_queue: Queue,resultado_event:Event,stop_event:Event,resultado_scanner:Queue,resultado_scanner_event:Event):
     # loop over frames from the video file stream
     pygame.init()
    
@@ -90,6 +91,7 @@ def detectar(detector,data,vs,resultado_queue: Queue,resultado_event:Event,stop_
         if contador_fps > 40:
             contador_fps = 0
             contador_detecciones =0
+            resultado_scanner_event.clear()
 
         # compute the facial embeddings for each face bounding box
         encodings = face_recognition.face_encodings(rgb, boxes)
@@ -128,11 +130,40 @@ def detectar(detector,data,vs,resultado_queue: Queue,resultado_event:Event,stop_
                     voz("0",name)
                     time.sleep(5)
                 else:
+                    name,code=name.split("-")
+                    print(code)
                     voz("1",name)
-                    pedir_codigo(name)
+                    resultado_queue.put_nowait("pedir")
+                    resultado_event.set()
+                    timeFin = time.time()+7 #tiempo de ahora más 5 segundos
+                    #resultado_queue.put("pedir",True,1000)
+                    timeNow = time.time()
+                    while((not resultado_scanner_event.is_set()) and (timeFin>timeNow)):
+                        timeNow = time.time()
                     
+                    print("salio del while")
+                    if resultado_scanner_event.is_set():
+                        print("salio del while pq hay codigo")
+                        codigo = resultado_scanner.get()
+                        codigo=seccionar_rut(codigo)
+                        print("Codigo entregado: ",codigo)
+                        if codigo == code:
+                            print("llegó ",name)
+                            resultado_event.set()
+                            resultado_queue.put_nowait("Si registrado")
+                            voz("2",name)
+                        else:
+                            print("llegó ",name," pero no coincide el codigo")
+                            resultado_event.set()
+                            resultado_queue.put_nowait("No registrado")
+                            voz("-1",name)
+                    else:
+                        
+                        print("llegó",name," pero no puso el carnet")
+                    #pedir_codigo(name)
                 contador_detecciones = 0 
-                resultado_event.clear()
+                
+                resultado_scanner_event.clear()
             names.append(name)
 
 def voz(code,name):
@@ -140,23 +171,18 @@ def voz(code,name):
     #code = -1, qr no coincide
     #code = 1, pide QR
     #code = 2, qr coincide
-    name=name.split("-")[0]
-    atchivo = "Bienvenido "+name+".ogg"
+    archivo = "Audios/Bienvenido "+name+".ogg"
         
     #engine = pyttsx3.init()
     if code == "0":
         pygame.mixer.Sound('No se encuentra registrado en nuestra base de datos.ogg').play()
     elif code == "-1":
         #pygame.mixer.Sound('').play()
-        pygame.mixer.Sound('Los datos no coinciden.ogg').play()
-    elif code== "1" and name=="Nacho":
-        pygame.mixer.Sound('Bienvenido ignacio.ogg').play()
-    elif code== "1" and name=="Pablo":
-        pygame.mixer.Sound('Bienvenido pablo.ogg').play()
-    elif code== "1" and name=="Vicho":
-        pygame.mixer.Sound('Bienvenido vicente.ogg').play()
+        pygame.mixer.Sound('Audios/Los datos no coinciden.ogg').play()
+    elif code== "1":
+        pygame.mixer.Sound('Audios/acercar-cedula.ogg').play()
     else:
-        pygame.mixer.Sound('Bienvenido antonio.ogg').play()
+        pygame.mixer.Sound(archivo).play()
         """
         if name=="Nacho":
             pygame.mixer.Sound('Bienvenido ignacio.ogg').play()
@@ -167,18 +193,19 @@ def voz(code,name):
         elif name =="Antonio":
             pygame.mixer.Sound('Bienvenido antonio.ogg').play()
          """        
-    
+"""
 def pedir_codigo(name):    
     nombre,codigo_real = name.split('-')
     codigo_scanner = scanner()
     timeFin = time.time() +5
     while(time.time() < timeFin):
         linea = barcode_reader()
-    
+"""
 def seccionar_rut (linea):
-    linea.replace("]","|")
-    linea.replace("'","-")
-    if (linea[0:4] == "https"):
+    #print("entró al seccionar rut")
+    linea = linea.replace("]","|")
+    linea = linea.replace("'","-")
+    if (linea[0:5] == "https"):
         #leyó carné nuevo
         linea = linea.split("RUN")[1].split("/")[0].split("-")[0][1:]
         return linea
@@ -191,19 +218,10 @@ def seccionar_rut (linea):
     else:
         return "error"  
     
-#def scanner():
-#    try:
-#        while(True):
-            
-    
-#    except KeyboardInterrupt:
-#        print("keyboard interrpt")
-#        #logging.debug('Keyboard interrupt')
-#    except Exception as err:
-#        print("error",err)
+
 
 class App:
-    def __init__(self, window, resultado_queue:Queue, resultado_event: Event):
+    def __init__(self, window, resultado_queue:Queue, resultado_event: Event,resultado_scanner:Queue,resultado_scanner_event:Event):
         print("iniciando UI")
         self.window = window
         self.font = Font(family="Arial",size=40)
@@ -211,29 +229,68 @@ class App:
         self.window.wm_attributes("-fullscreen","true")
         self.resultado_evento = resultado_event
         self.resultado_queue = resultado_queue
+        self.resultado_scanner= resultado_scanner
+        self.resultado_scanner_event = resultado_scanner_event
         self.fontStyle = Font(family="Arial", size=18)
         # Create a canvas that can fit the above video source size
         self.imagen=PhotoImage(file="logo-sit-blanco.png")
-        self.label = tkinter.Label(window,compound=tkinter.CENTER)
+        self.label = tkinter.Label(window,compound=tkinter.CENTER,bg="black")
+        self.lector = tkinter.Text(window, width = 1,height=1,fg="black",bg="black")
+        self.lector.bind('<Return>', self.callback)
         self.label.pack()
+        self.lector.pack()
+        self.lector.focus_set()
+        #self.lector.lift(self.window)
+        self.code=""
+        #self.lector.pack_forget()
         # After it is called once, the update method will be automatically called every delay milliseconds
         self.delay = 300
         self.num=0
         self.update()
+        self.delay_codigo = 5000
         #self.window
         self.window.mainloop()
-        
+    
+    def callback(self,event):
+        self.code=self.lector.get("1.0","end-1c")
+        print("Lectura del scanner: ",self.code)
+        self.resultado_scanner.put_nowait(self.code)
+        self.resultado_scanner_event.set()
+        self.code=""
+        self.lector.delete("1.0","end")
+        time.sleep(0.1)
+        self.delay_codigo = 0
+
     def update(self):
         try:
+            print("update")
             hora = time.strftime("%H:%M")
+            self.delay_codigo = 5000
+            self.lector.pack_forget()
             if self.resultado_evento.is_set():
                 res = self.resultado_queue.get()
-                archivo = "logo-sit-rojo.png" if res == "No registrado" else "logo-sit-verde.png"
-                self.imagen=PhotoImage(file=archivo)
-                self.label.configure(image=self.imagen,text="\n\n\n\n\n\n\n\n\n\n\n"+hora,fg="white",font=self.font)
-                self.label.image=self.imagen
-                tiempo = 8000 if res == "No registrado" else 4500 
-                self.window.after(tiempo,self.update)
+                self.resultado_evento.clear()
+                if res == "pedir":
+                    self.lector.pack(fill=tkinter.BOTH,expand=True,)
+                    #print("está en el while del la gui")
+                    #self.label.pack_forget()
+                    #self.lector.configure(state=tkinter.NORMAL)
+                    self.lector.focus_set()
+                    txt = "\n\n\n\n\n\n\n\n\n\n\n"+hora
+                    self.imagen=PhotoImage(file="ponga-carnet.png")
+                    self.label.configure(image=self.imagen,text=txt,fg="white",font=self.font)
+                    self.label.image=self.imagen
+                    #while(not self.resultado_scanner_event.is_set() and timeFinal>time.time()):
+                     #   time.sleep(0.3)
+                      #  print("entro al final")
+                    self.window.after(self.delay_codigo,self.update)
+                else:
+                    archivo = "logo-sit-rojo.png" if res == "No registrado" else "logo-sit-verde.png"
+                    self.imagen=PhotoImage(file=archivo)
+                    self.label.configure(image=self.imagen,text="\n\n\n\n\n\n\n\n\n\n\n"+hora,fg="white",font=self.font)
+                    self.label.image=self.imagen
+                    tiempo = 4500 if res == "No registrado" else 4500 
+                    self.window.after(tiempo,self.update)
             else:
                 txt = "\n\n\n\n\n\n\n\n\n\n\n"+hora
                 self.imagen=PhotoImage(file="logo-sit-blanco.png")
@@ -246,12 +303,14 @@ class App:
 
 
 
-
 def main():
     detector,data,vs= cargarModelo()
     #detectar(detector,data,vs)
     resultado_queue = Queue()
+    resultado_scanner = Queue()
+    resultado_scanner_event = Event()
     resultado_event= Event()
+
     stop_event= Event()
     
 #    App(tkinter.Tk(), resultado_queue,pausa_event,cargando_event)
@@ -259,9 +318,9 @@ def main():
 
     try:
         #Hilo de ejecuíón que se encarga del procesamiento
-        Thread(name="hilo2",target=detectar, args=[detector,data,vs,resultado_queue,resultado_event,stop_event]).start()
+        Thread(name="hilo2",target=detectar, args=[detector,data,vs,resultado_queue,resultado_event,stop_event,resultado_scanner,resultado_scanner_event]).start()
         #Hilo principal del codigo, se encarga de la UI, Tkinter no funciona bien en otro hilo que no sea el principal 
-        App(tkinter.Tk(), resultado_queue,resultado_event)
+        App(tkinter.Tk(), resultado_queue,resultado_event,resultado_scanner,resultado_scanner_event)
     finally:
         print("APRETANDO STOP")
         #si se cierra la ui se gatilla el evento Stop, el que también detiene el procesamiento

@@ -1,5 +1,5 @@
 # USAGE
-# python pi_face_recognition.py --cascade haarcascade_frontalface_default.xml --encodings encodings.pickle
+# python3 pi_face_recognition.py --cascade haarcascade_frontalface_default.xml --encodings encodings.pickle
 
 # import the necessary packages
 from imutils.video import VideoStream
@@ -203,9 +203,15 @@ def pedir_codigo(name):
 """
 def seccionar_rut (linea):
     #print("entró al seccionar rut")
+    #httpsÑ--portal.sidiv.registrocivil.cl-docstatus_RUN¿19407673'8/type¿CEDULA/serial¿109746456/mrz¿109746456296051872605188
+    #httpsÑ--portal.sidiv.registrocivil.cl-docstatus_RUN¿19407673'8/type¿CEDULA/serial¿109746456/mrz¿109746456296051872605188
+    print("codigo que llego: ",linea)
+#    linea = linea.rstrip()
     linea = linea.replace("]","|")
     linea = linea.replace("'","-")
-    if (linea[0:5] == "https"):
+#    print(type(linea[0]))
+    print("linea 0 a 4 char ",linea[0:4])
+    if (len(linea.split("RUN")) == 2):
         #leyó carné nuevo
         linea = linea.split("RUN")[1].split("/")[0].split("-")[0][1:]
         return linea
@@ -257,13 +263,13 @@ class App:
         self.resultado_scanner.put_nowait(self.code)
         self.resultado_scanner_event.set()
         self.code=""
-        self.lector.delete("1.0","end")
+        self.lector.delete("1.0","end-1c")
         time.sleep(0.1)
         self.delay_codigo = 0
 
     def update(self):
         try:
-            print("update")
+            #print("update")
             hora = time.strftime("%H:%M")
             self.delay_codigo = 5000
             self.lector.pack_forget()
